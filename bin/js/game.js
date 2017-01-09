@@ -7,6 +7,14 @@ var clientSocket = io();
 window.onload = function () {
     var game = new HideAndSeek.Game();
 };
+function equivalent(a, b) {
+    if (a == b) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
 var HideAndSeek;
 (function (HideAndSeek) {
     var Item = (function (_super) {
@@ -33,12 +41,14 @@ var HideAndSeek;
             if (t == 0) {
                 _this = _super.call(this, game, x, y, 'redford', 0) || this;
                 _this.speed = 135;
+                _this.maxSpeed = 250;
             }
             else if (t == 1) {
                 _this = _super.call(this, game, x, y, 'green', 1) || this;
                 _this.speed = 125;
+                _this.maxSpeed = 225;
             }
-            _this.anchor.setTo(0.5, 0);
+            _this.anchor.setTo(0.5, 0.5);
             game.add.existing(_this);
             game.physics.enable(_this);
             _this.team = t;
@@ -105,7 +115,7 @@ var HideAndSeek;
             return _super.apply(this, arguments) || this;
         }
         Boot.prototype.preload = function () {
-            this.load.image('preloadBar', 'assets/loader.png');
+            this.game.load.image('preloadBar', 'assets/loader.png');
         };
         Boot.prototype.create = function () {
             //  Unless you specifically need to support multitouch I would recommend setting this to 1
@@ -160,11 +170,12 @@ var HideAndSeek;
             this.music = this.add.audio('music', 1, false);
             // this.music.play();
             console.log(this.team);
-            this.map = this.game.add.tilemap('map1');
+            this.map = this.game.add.tilemap(this.mapToUse);
             this.map.addTilesetImage('ground_1x1');
             this.layer = this.map.createLayer('Tile Layer 1');
             this.layer.resizeWorld();
-            this.map.setCollisionBetween(1, 12);
+            this.map.setCollision(1);
+            //this.map.setCollisionBetween(1, 12);
             this.velocityModifier = 1;
             this.endGame = false;
             var mins = 2;
@@ -176,6 +187,11 @@ var HideAndSeek;
             this.text.fill = '#FFFFFF';
             this.text.fixedToCamera = true;
             this.text.anchor.setTo(0.5, 0);
+            this.distText = this.game.add.text(this.game.world.centerX + 250, 10, "", null);
+            this.distText.fill = '#FFFFFF';
+            this.distText.fixedToCamera = true;
+            this.distText.anchor.setTo(0.5, 0);
+            this.tests();
         };
         //taken from online
         Level1.prototype.formatTime = function (num) {
@@ -183,15 +199,21 @@ var HideAndSeek;
             var seconds = '0' + (num - minutes * 60);
             return minutes.substr(-2) + ':' + seconds.substr(-2);
         };
+        Level1.prototype.distance = function (a, b) {
+            var distX = Math.abs(a.x - b.x);
+            var distY = Math.abs(a.y - b.y);
+            return Math.sqrt((distX * distX) + (distY * distY)).toFixed(2);
+        };
         Level1.prototype.update = function () {
             var that = this;
             //console.log("Hit update");
             if (!this.endGame) {
                 if (this.gotData) {
-                    if (this.canMove) {
-                        this.updatePlayers();
-                    }
+                    this.updatePlayers();
                     this.sendData();
+                    if (this.team == 0) {
+                        this.distText.setText("Distance: " + this.distance(this.myPlayer, this.players['hider']));
+                    }
                 }
                 if (this.globalTimer.running) {
                     this.text.setText(this.formatTime(Math.round((this.mainTimeEvent.delay - this.globalTimer.ms) / 1000)));
@@ -200,25 +222,27 @@ var HideAndSeek;
         };
         Level1.prototype.populatePlayers = function () {
             console.log("Populating players");
+            var xMid = 720;
+            var yMid = 400;
             for (var i = 0; i < this.playersData['seekers'].length; i++) {
                 var x;
                 var y;
                 switch (i) {
                     case 0:
-                        x = 800;
-                        y = 450;
+                        x = xMid - 32;
+                        y = yMid - 32;
                         break;
                     case 1:
-                        x = 900;
-                        y = 450;
+                        x = xMid + 32;
+                        y = yMid - 32;
                         break;
                     case 2:
-                        x = 700;
-                        y = 450;
+                        x = xMid - 32;
+                        y = yMid + 32;
                         break;
                     case 3:
-                        x = 600;
-                        y = 450;
+                        x = xMid + 32;
+                        y = yMid + 32;
                         break;
                 }
                 var p_1 = new HideAndSeek.Player(this.game, x, y, 0, this.playersData['seekers'][i]['id']);
@@ -230,7 +254,7 @@ var HideAndSeek;
                     console.log("My player allocated");
                 }
             }
-            var p = new HideAndSeek.Player(this.game, 90, 100, 1, this.playersData['hider']['id']);
+            var p = new HideAndSeek.Player(this.game, 720, 400, 1, this.playersData['hider']['id']);
             console.log("Hider id " + this.playersData['hider']['id']);
             this.players['hider'] = p;
             if (clientSocket.id == this.playersData['hider']['id']) {
@@ -241,16 +265,23 @@ var HideAndSeek;
             this.game.camera.follow(this.myPlayer);
             this.isPopulated = true;
             clientSocket.emit('populated');
+            for (var i = 0; i < this.players['seekers'].length; i++) {
+                console.log("Seekers should exist now: " + this.players['seekers'][i].exist);
+            }
+            console.log("Hider should exist now: " + this.players['hider'].exist);
         };
         Level1.prototype.updatePlayers = function () {
-            //console.log("Hit updating players");
+            console.log("Hit updating players");
             var that = this;
+            console.log();
             for (var i = 0; i < this.players['seekers'].length; i++) {
                 this.game.physics.arcade.collide(this.players['seekers'][i], this.layer);
             }
             this.game.physics.arcade.collide(this.players['hider'], this.layer);
             console.log(this.players['seekers'].length);
             for (var i = 0; i < this.players['seekers'].length; i++) {
+                //casting a ray
+                console.log("Hider should be visible to seekers only when in line of sight and within 450 units");
                 var ray = new Phaser.Line(this.players['seekers'][i].x, this.players['seekers'][i].y, that.players['hider'].x, that.players['hider'].y);
                 var tileHits = that.layer.getRayCastTiles(ray, 4, true, false);
                 var distX = Math.abs(this.players['seekers'][i].x - that.players['hider'].x);
@@ -281,7 +312,9 @@ var HideAndSeek;
             if (!this.myPlayer.diving) {
                 curDirection.multiply(friction, friction);
                 if (!this.endGame) {
-                    this.control(movement);
+                    if (this.canMove) {
+                        this.control(movement);
+                    }
                 }
             }
             movement.normalize();
@@ -386,6 +419,7 @@ var HideAndSeek;
         Level1.prototype.onEnd = function () {
             this.globalTimer.pause();
             this.endGame = true;
+            this.myPlayer.body.velocity = 0;
             var that = this;
             setTimeout(function () {
                 if (that.seekersWon) {
@@ -455,6 +489,12 @@ var HideAndSeek;
         };
         Level1.prototype.clearDisplayList = function () {
         };
+        Level1.prototype.tests = function () {
+            console.log("There should be no seekers right now:" + equivalent(this.players['seekers'].length, 0));
+            console.log("Timer text should exist: " + this.text.exists);
+            var tmp = (this.mainTimeEvent.delay - this.globalTimer.ms) / 1000;
+            console.log("Timer should read 2:30 until the game starts. Then should count down." + equivalent("2:30", this.formatTime(Math.round(tmp))));
+        };
         return Level1;
     }(Phaser.State));
     HideAndSeek.Level1 = Level1;
@@ -476,9 +516,9 @@ var HideAndSeek;
             var that = this;
             //add background
             this.background = this.add.sprite(0, 0, 'titlepage');
-            this.background.alpha = 0;
+            // this.background.alpha = 0;
             //intro sequence
-            this.add.tween(this.background).to({ alpha: 1 }, 2000, Phaser.Easing.Bounce.InOut, true);
+            // this.add.tween(this.background).to({ alpha: 1 }, 2000, Phaser.Easing.Bounce.InOut, true);
             // this.add.tween(this.logo).to({ y: 220 }, 2000, Phaser.Easing.Elastic.Out, true, 2000);
             this.input.onDown.addOnce(this.fadeOut, this);
             //add button start 
@@ -493,19 +533,13 @@ var HideAndSeek;
             this.hiderPlayers.frame = 0;
             clientSocket.emit('joinedmenu');
             this.clientFunctions();
+            this.tests();
         };
         MainMenuState.prototype.update = function () {
             if (this.game.input.keyboard.isDown(Phaser.Keyboard.DOWN)) {
                 clientSocket.emit('idcheck', "Hello, this is: ");
                 this.checkIfHost();
             }
-            // if (this.numHid > 0 && this.numSeek > 0)
-            // {
-            //     if (this.isHost)
-            //     {
-            //         this.startBtn = this.game.add.button(this.game.world.centerX - 95, 200, 'startBtn', this.actionOnClick, this, 2, 1, 0);
-            //     }
-            // }
             this.seekerPlayers.frame = this.numSeek;
             this.hiderPlayers.frame = this.numHid;
         };
@@ -554,7 +588,7 @@ var HideAndSeek;
                     console.log('Joined team seeker');
                 }
             }
-            console.log(this.teamJoined);
+            console.log("Your current team: " + this.teamJoined);
         };
         //when clicking on hider
         MainMenuState.prototype.choseHider = function () {
@@ -581,21 +615,19 @@ var HideAndSeek;
                     console.log('Joined team hider');
                 }
             }
-            console.log(this.teamJoined);
+            console.log("Your current team: " + this.teamJoined);
         };
         MainMenuState.prototype.sendStart = function () {
             clientSocket.emit('startgame');
-        };
-        MainMenuState.prototype.actionOnClick = function () {
-            this.startGame();
         };
         MainMenuState.prototype.startGame = function () {
             if (this.teamJoined == 0 || this.teamJoined == 1) {
                 //this.game.state.restart();
                 //this.game.state.remove('MainMenu');
-                // this.game.state.add('Level1', Level1, false);
+                //this.game.state.add('Level1', Level1, false);
                 this.game.state.start('Level1', true, false);
                 this.game.state.states['Level1'].team = this.teamJoined;
+                this.game.state.states['Level1'].mapToUse = this.map;
                 this.clearDisplayList();
             }
         };
@@ -632,20 +664,38 @@ var HideAndSeek;
                 });
             }
             if (!startGame) {
-                startGame = clientSocket.on('startgame', function (team) {
+                startGame = clientSocket.on('startgame', function (team, map) {
                     that.teamJoined = team;
+                    that.map = map;
                     that.startGame();
                 });
             }
         };
         MainMenuState.prototype.clearDisplayList = function () {
             this.background.destroy();
-            this.logo.destroy();
             this.startBtn.destroy();
             this.hiderBtn.destroy();
             this.seekerBtn.destroy();
             this.seekerPlayers.destroy();
             this.hiderPlayers.destroy();
+            console.log("Seeker button should not exist. Does seeker button exist? " + this.seekerBtn.exists);
+            console.log("Hider button should not exist. Does hider button exist? " + this.hiderBtn.exists);
+            console.log("Start button should notexist. Does start button exist? " + this.startBtn.exists);
+            console.log("Background should  notexist. Does background exist? " + this.background.exists);
+            console.log("Should show the number of seekers on the server. " + equivalent(this.numSeek, this.seekerPlayers.frame));
+            console.log("Should show the number of hiders on the server. " + equivalent(this.numHid, this.hiderPlayers.frame));
+        };
+        MainMenuState.prototype.tests = function () {
+            console.log("Main Menu Tests");
+            console.log("Seeker button should exist. Does seeker button exist? " + this.seekerBtn.exists);
+            console.log("Hider button should exist. Does hider button exist? " + this.hiderBtn.exists);
+            console.log("Start button should exist. Does start button exist? " + this.startBtn.exists);
+            console.log("Background should exist. Does background exist? " + this.background.exists);
+            console.log("");
+            console.log("Should show the number of seekers on the server. " + equivalent(this.numSeek, this.seekerPlayers.frame));
+            console.log("Should show the number of hiders on the server. " + equivalent(this.numHid, this.hiderPlayers.frame));
+            console.log("All buttons should be able to be pressed. Clicking on one moves you to that team as long as there is an available space.");
+            console.log("Pressing start game will not work until there are at least one seeker and one hider, never before");
         };
         return MainMenuState;
     }(Phaser.State));
@@ -670,6 +720,7 @@ var HideAndSeek;
             this.load.image('green', 'assets/img/green.png');
             this.load.image('level1', 'assets/img/level1.png');
             this.load.image('ground_1x1', 'assets/img/ground_1x1.png');
+            this.load.image('tile', 'assets/img/solidtile.png');
             this.load.image('seekerswin', 'assets/img/seekerswin.png');
             this.load.image('hiderwins', 'assets/img/hiderwins.png');
             this.load.image('hide!', 'assets/img/hide.png');
@@ -682,8 +733,8 @@ var HideAndSeek;
             this.load.spritesheet('hiderbtn', 'assets/img/hiderbtn.png', 190, 65);
             //  this.game.load.tilemap('map2', "maps/collision_test.json", null, Phaser.Tilemap.TILED_JSON);
             this.game.load.tilemap('map1', "maps/map1.json", null, Phaser.Tilemap.TILED_JSON);
-            this.game.load.tilemap('map1', "maps/map1.json", null, Phaser.Tilemap.TILED_JSON);
-            this.game.load.tilemap('map1', "maps/map1.json", null, Phaser.Tilemap.TILED_JSON);
+            this.game.load.tilemap('map2', "maps/map2.json", null, Phaser.Tilemap.TILED_JSON);
+            this.game.load.tilemap('map5', "maps/map5.json", null, Phaser.Tilemap.TILED_JSON);
         };
         Preloader.prototype.create = function () {
             var tween = this.add.tween(this.preloadBar).to({ alpha: 0 }, 1000, Phaser.Easing.Linear.None, true);
@@ -709,4 +760,17 @@ var TitleScreenState = (function (_super) {
     };
     return TitleScreenState;
 }(Phaser.State));
+///// <reference path="../../typings/main.d.ts" />
+describe("MainMenuState", function () {
+    describe("The main menu state", function () {
+        it("Holds the main menu state information", function () {
+            // Arrange
+            var mms = new HideAndSeek.MainMenuState();
+            // Act
+            var result = mms.create();
+            // Assert
+            //expect(result).
+        });
+    });
+});
 //# sourceMappingURL=game.js.map

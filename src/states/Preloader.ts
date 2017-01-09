@@ -18,6 +18,7 @@
             this.load.image('green', 'assets/img/green.png');
             this.load.image('level1', 'assets/img/level1.png');
             this.load.image('ground_1x1', 'assets/img/ground_1x1.png');
+            this.load.image('tile', 'assets/img/solidtile.png');
             this.load.image('seekerswin', 'assets/img/seekerswin.png');
             this.load.image('hiderwins', 'assets/img/hiderwins.png');
             this.load.image('hide!', 'assets/img/hide.png');
@@ -34,8 +35,8 @@
           //  this.game.load.tilemap('map2', "maps/collision_test.json", null, Phaser.Tilemap.TILED_JSON);
             this.game.load.tilemap('map1', "maps/map1.json", null, Phaser.Tilemap.TILED_JSON);
 
-            this.game.load.tilemap('map1', "maps/map1.json", null, Phaser.Tilemap.TILED_JSON);
-            this.game.load.tilemap('map1', "maps/map1.json", null, Phaser.Tilemap.TILED_JSON);
+            this.game.load.tilemap('map2', "maps/map2.json", null, Phaser.Tilemap.TILED_JSON);
+            this.game.load.tilemap('map5', "maps/map5.json", null, Phaser.Tilemap.TILED_JSON);
 
 
         }

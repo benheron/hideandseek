@@ -4,7 +4,7 @@
 
         preload() {
 
-            this.load.image('preloadBar', 'assets/loader.png');
+           this.game.load.image('preloadBar', 'assets/loader.png');
 
         }
 
@@ -16,7 +16,11 @@
             //  Phaser will automatically pause if the browser tab the game is in loses focus. You can disable that here:
             this.stage.disableVisibilityChange = true;
 
+            
+
             this.game.state.start('Preloader', true, false);
+
+            
 
         }
 

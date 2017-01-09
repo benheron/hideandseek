@@ -9,43 +9,49 @@ module HideAndSeek {
 
     export class Level1 extends Phaser.State {
 
-        background: Phaser.Sprite;
-        music: Phaser.Sound;
-        myPlayer: HideAndSeek.Player;
-        enemy: HideAndSeek.Player;
-        findHiderImg: Phaser.Sprite;
-        dontGetCaughtImg: Phaser.Sprite;
-        hideImg: Phaser.Sprite;
+        private background: Phaser.Sprite;
+        private music: Phaser.Sound;
+        private myPlayer: HideAndSeek.Player;
+        private enemy: HideAndSeek.Player;
+        private findHiderImg: Phaser.Sprite;
+        private dontGetCaughtImg: Phaser.Sprite;
+        private hideImg: Phaser.Sprite;
 
-        map: Phaser.Tilemap;
-        layer: Phaser.TilemapLayer;
+        private map: Phaser.Tilemap;
+        private layer: Phaser.TilemapLayer;
 
 
-        team: number;
-        velocityModifier: number;
+        private team: number;
+        private velocityModifier: number;
 
-        endGame: Boolean;
+        private endGame: Boolean;
 
-        seekersWinImg: Phaser.Sprite;
-        hiderWinsImg: Phaser.Sprite;
+        private seekersWinImg: Phaser.Sprite;
+        private hiderWinsImg: Phaser.Sprite;
 
-        playersData: any;
-        players: any;
+        private playersData: any;
+        private players: any;
 
-        seekers: [{}];
-        hider: {};
+        private seekers: [{}];
+        private hider: {};
 
-        gotData: boolean;
-        isPopulated: boolean;
+        private gotData: boolean;
+        private isPopulated: boolean;
 
-        globalTimer: any;
-        mainTimeEvent: any;
-        text: any;
+        private globalTimer: any;
+        private mainTimeEvent: any;
+        private text: any;
+        private distText: any;
 
-        canMove: Boolean;
+        private canMove: Boolean;
 
-        seekersWon: boolean;
-        hidersWon: boolean;
+        private seekersWon: boolean;
+        private hidersWon: boolean;
+
+        public mapToUse: string;
+
+       
+
 
         
         
@@ -88,15 +94,16 @@ module HideAndSeek {
 
             console.log(this.team);
 
-            this.map = this.game.add.tilemap('map1');
+            this.map = this.game.add.tilemap(this.mapToUse);
             this.map.addTilesetImage('ground_1x1');
            
             
 
             this.layer = this.map.createLayer('Tile Layer 1');
             this.layer.resizeWorld();
+            this.map.setCollision(1);
 
-            this.map.setCollisionBetween(1, 12);
+            //this.map.setCollisionBetween(1, 12);
 
            
             
@@ -119,6 +126,13 @@ module HideAndSeek {
             this.text.fixedToCamera = true;
             this.text.anchor.setTo(0.5,0);
 
+            this.distText =  this.game.add.text(this.game.world.centerX+250, 10, "", null);
+            this.distText.fill ='#FFFFFF';
+            this.distText.fixedToCamera = true;
+            this.distText.anchor.setTo(0.5,0);
+             
+            this.tests();
+
         }
 
         //taken from online
@@ -129,6 +143,14 @@ module HideAndSeek {
             return minutes.substr(-2) + ':' + seconds.substr(-2);
         }
 
+        distance(a, b)
+        {
+            var distX = Math.abs(a.x - b.x);
+            var distY = Math.abs(a.y - b.y);
+
+            return Math.sqrt((distX*distX) + (distY * distY)).toFixed(2);
+        }
+
         update()
         {
             var that = this;
@@ -137,12 +159,17 @@ module HideAndSeek {
             {
                 if (this.gotData)
                 {
-                    if(this.canMove)
-                    {
-                        this.updatePlayers();
-                    }
+                    
+                    this.updatePlayers();
+                    
                         
                     this.sendData();
+
+                    if (this.team == 0)
+                    {
+                        this.distText.setText("Distance: " + this.distance(this.myPlayer, this.players['hider']));
+                    }
+                    
                 }
                 
                 if(this.globalTimer.running)
@@ -164,7 +191,10 @@ module HideAndSeek {
 
         populatePlayers()
         {
-           console.log("Populating players");
+            console.log("Populating players");
+            var xMid = 720;
+            var yMid = 400;
+
             for (var i = 0; i < this.playersData['seekers'].length; i++)
             {
                 var x;
@@ -172,20 +202,20 @@ module HideAndSeek {
                 switch(i) 
                 {
                     case 0:
-                        x = 800;
-                        y = 450;
+                        x = xMid - 32;
+                        y = yMid - 32;
                         break;
                     case 1:
-                        x = 900;
-                        y = 450;    
+                        x = xMid +32;
+                        y = yMid - 32;    
                         break;
                     case 2:
-                        x = 700;
-                        y = 450;
+                        x = xMid - 32;
+                        y = yMid + 32;
                         break;
                     case 3:
-                        x = 600;
-                        y = 450;
+                        x = xMid + 32;
+                        y = yMid + 32;
                         break;
                 }
 
@@ -201,10 +231,9 @@ module HideAndSeek {
                     console.log("My player allocated");
                 }
 
-                
             }
 
-            let p = new Player(this.game, 90, 100, 1, this.playersData['hider']['id']);
+            let p = new Player(this.game, 720, 400, 1, this.playersData['hider']['id']);
             console.log("Hider id " + this.playersData['hider']['id']);
             this.players['hider'] = p;
 
@@ -220,12 +249,21 @@ module HideAndSeek {
 
             this.isPopulated = true;
             clientSocket.emit('populated');
+
+
+            for (var i = 0; i < this.players['seekers'].length; i++)
+            {
+                console.log("Seekers should exist now: " + this.players['seekers'][i].exist);
+            }
+            console.log("Hider should exist now: " + this.players['hider'].exist);
         }
 
         updatePlayers()
         {
-            //console.log("Hit updating players");
+            console.log("Hit updating players");
             var that = this;
+
+            console.log()
 
             for (var i = 0; i < this.players['seekers'].length; i++)
             {
@@ -237,6 +275,8 @@ module HideAndSeek {
             console.log(this.players['seekers'].length);
             for (var i = 0; i < this.players['seekers'].length; i++)
             {
+                //casting a ray
+                console.log("Hider should be visible to seekers only when in line of sight and within 450 units");
                 var ray = new Phaser.Line(this.players['seekers'][i].x, this.players['seekers'][i].y, that.players['hider'].x, that.players['hider'].y);
                 var tileHits = that.layer.getRayCastTiles(ray, 4, true, false);
 
@@ -287,7 +327,10 @@ module HideAndSeek {
                 curDirection.multiply(friction, friction);
                 if (!this.endGame)
                 {
-                    this.control(movement);
+                    if(this.canMove)
+                    {
+                        this.control(movement);
+                    }
                 }
             }
             
@@ -461,6 +504,8 @@ module HideAndSeek {
             this.globalTimer.pause();
             this.endGame = true;
 
+            this.myPlayer.body.velocity = 0;
+
             var that = this;
             
             setTimeout(function()
@@ -571,6 +616,15 @@ module HideAndSeek {
         clearDisplayList()
         {
             
+
+        }
+
+        tests()
+        {
+            console.log("There should be no seekers right now:" + equivalent(this.players['seekers'].length, 0));
+            console.log("Timer text should exist: " + this.text.exists);
+            var tmp = (this.mainTimeEvent.delay -  this.globalTimer.ms) / 1000;
+            console.log("Timer should read 2:30 until the game starts. Then should count down." + equivalent("2:30", this.formatTime(Math.round(tmp))));
 
         }
     }

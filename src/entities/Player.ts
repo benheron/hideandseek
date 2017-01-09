@@ -16,12 +16,14 @@
             {
                 super(game, x, y, 'redford', 0);
                 this.speed = 135;
+                this.maxSpeed = 250;
             } else if (t == 1) {
                 super(game, x, y, 'green', 1);
                 this.speed = 125;
+                this.maxSpeed = 225;
             }
 
-            this.anchor.setTo(0.5, 0);
+            this.anchor.setTo(0.5, 0.5);
 
             game.add.existing(this);
             game.physics.enable(this);

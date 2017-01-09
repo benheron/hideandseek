@@ -192,8 +192,7 @@ sio.on('connection', function(socket) {
     //hider
     socket.on('addHider', function()
     {
-       // hider.push(socket.id);
-       // hider = socket.id;
+       
         players['hider'] = {'id' : socket.id};
         sio.emit('addHider', players);
         console.log('Player ' + socket.id + ' added as hider');
@@ -262,20 +261,34 @@ sio.on('connection', function(socket) {
         //make sure there is at least one seeker and hider
         if (players['seekers'].length > 0 && Object.keys(players['hider']).length > 0 && canStart)
         {
-            
+            var map = Math.floor(Math.random() * 2);
+            var mapName;
+
+            if (map == 0)
+            {
+                mapName = 'map2';
+            } else if (map == 1)
+            {
+                mapName = 'map5';
+            } else {
+                mapName = 'map5';
+            }
 
             //send to all connected seekers
             var idSend;
             for (var i = 0; i < players['seekers'].length; i++)
             {
                 idSend = sio.sockets.connected[players['seekers'][i]['id']];
-                idSend.emit('startgame', 0);
+                idSend.emit('startgame', 0, mapName);
+                console.log('Sending start data to seeker: ' + players['seekers'][i]['id']);
             }
 
             idSend = sio.sockets.connected[players['hider']['id']];
+            
 
             //send to connected hider
-            idSend.emit('startgame', 1);
+            idSend.emit('startgame', 1, mapName);
+            console.log('Sending start data to hider: ' + players['hider']['id']);
             ingame = true;
         }
 
@@ -287,6 +300,7 @@ sio.on('connection', function(socket) {
         var idSend;
         idSend = sio.sockets.connected[socket.id];
         idSend.emit('sentplayersid', players);
+        console.log("Sending player ids to the player who requested it. ID: " + socket.id);
     });
 
     socket.on('playerdata', function(playerdata, team)
@@ -318,12 +332,14 @@ sio.on('connection', function(socket) {
         if (numPopulated >= players['seekers'].length + 1)
         {
             everyonePopulated = true;
+            console.log("Everyone has populated their game");
         }
     });
 
     socket.on('populated', function()
     {
         numPopulated += 1;
+        console.log("Adding one to the populated clients");
     });
 
 //game update
@@ -411,6 +427,7 @@ if (!secondInterval)
 
 function sendCurrentPlayers(message)
 {
+    console.log("Sending data to all current players");
     var idSend;
     for (var i = 0; i < players['seekers'].length; i++)
     {
