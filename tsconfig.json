@@ -1,0 +1,9 @@
+
+{
+    "compilerOptions": {
+        "target": "ES5",
+        "module": "system",
+        "sourceRoot": "src",
+        "sourceMap": true
+    }
+}
